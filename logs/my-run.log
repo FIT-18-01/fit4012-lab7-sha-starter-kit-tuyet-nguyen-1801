@@ -1,0 +1,108 @@
+FIT4012 Lab 7 - SHA-256 Evidence Log
+Generated: 2026-05-22
+Student: Nguyen Tuyet
+Platform: Windows 11 + MinGW g++
+
+=== BUILD ===
+g++ -std=c++17 -Wall -Wextra -pedantic sha_procedure.cpp -o sha256
+g++ -std=c++17 -Wall -Wextra -pedantic file_integrity.cpp -o file_integrity
+g++ -std=c++17 -Wall -Wextra -pedantic password_hash.cpp -o password_hash
+g++ -std=c++17 -Wall -Wextra -pedantic salted_password_hash.cpp -o salted_password_hash
+[OK] All 4 programs compiled successfully with no warnings.
+
+=== 1. Known Answer Tests (NIST SHA-256 test vectors) ===
+Command: ./sha256 --self-test
+
+[PASS] input=""
+expected: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+actual  : e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+[PASS] input="abc"
+expected: ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+actual  : ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+
+[PASS] input="hello FIT4012 SHA"
+expected: e942ae0ecb44fe48e1490144162fc64e9c3c6c399bb4e2d686532195cdc3eae6
+actual  : e942ae0ecb44fe48e1490144162fc64e9c3c6c399bb4e2d686532195cdc3eae6
+
+=== 2. Hash String ===
+Command: ./sha256 --hash-string "hello FIT4012 SHA"
+Output : e942ae0ecb44fe48e1490144162fc64e9c3c6c399bb4e2d686532195cdc3eae6
+
+=== 3. File Integrity Check ===
+Command: printf "FIT4012 SHA file integrity sample\n" > sample.txt
+Command: ./sha256 --hash-file sample.txt
+Output : 5ee62dc925a9958dbd6732c570a23c7f65a8c11066e889b15068cfb4bf1a0bd9
+
+Command: ./file_integrity sample.txt 5ee62dc925a9958dbd6732c570a23c7f65a8c11066e889b15068cfb4bf1a0bd9
+Output :
+[PASS] File integrity OK
+SHA-256: 5ee62dc925a9958dbd6732c570a23c7f65a8c11066e889b15068cfb4bf1a0bd9
+
+--- Tamper: append "tampered content" to file ---
+Command: printf "tampered content\n" >> sample.txt
+Command: ./file_integrity sample.txt 5ee62dc925a9958dbd6732c570a23c7f65a8c11066e889b15068cfb4bf1a0bd9
+Output :
+[FAIL] File was changed or expected hash is incorrect
+expected: 5ee62dc925a9958dbd6732c570a23c7f65a8c11066e889b15068cfb4bf1a0bd9
+actual  : a69e0b7a0768cf3c7258b5ee277b9238604a97be5cec4a6e79eafd5d94a065ba
+
+[PASS] Tamper case correctly detected.
+
+=== 4. Password Hash (no salt) ===
+Command: ./password_hash register "fit4012-demo-password" test_password.hash
+Output : [PASS] Password hash saved to test_password.hash
+
+Command: ./password_hash login "fit4012-demo-password" test_password.hash
+Output : [PASS] Login success
+
+Command: ./password_hash login "wrong-password" test_password.hash
+Output : [FAIL] Login failed: wrong password
+Exit code: 1
+
+[PASS] Wrong password correctly rejected.
+
+=== 5. Salted Password Hash ===
+Command: ./salted_password_hash register "fit4012-demo-password" test_salted_1.hash
+Output : [PASS] Salted password hash saved to test_salted_1.hash
+
+Command: ./salted_password_hash register "fit4012-demo-password" test_salted_2.hash
+Output : [PASS] Salted password hash saved to test_salted_2.hash
+
+Content of test_salted_1.hash:
+a3dfa68c742c82de7d0689c297363a7a:0c67baeb19a2c285682a8b409bca8b0130841e0bbc7bc652f0492764fbd3e5ea
+
+Content of test_salted_2.hash:
+f207950cfbbec7264ddff1eef6a60908:0815f16e04b62786c03a21837e511acccf292b642e0d218fef6c5279299a717e
+
+[PASS] Same password "fit4012-demo-password" produced DIFFERENT salt:hash records.
+       (salt is random per registration => rainbow table attack is defeated)
+
+Command: ./salted_password_hash login "fit4012-demo-password" test_salted_1.hash
+Output : [PASS] Login success
+
+Command: ./salted_password_hash login "wrong-password" test_salted_1.hash
+Output : [FAIL] Login failed: wrong password
+Exit code: 1
+
+[PASS] Wrong password correctly rejected in salted login.
+
+=== 6. Demonstrate salt difference with hash-with-salt ===
+Command: ./salted_password_hash hash-with-salt "mypassword" "aabbccdd"
+Output : 96f78136f70e2330e29387d9ae14e64dbf52de74cca6f36e3355faad7f9f409c
+
+Command: ./salted_password_hash hash-with-salt "mypassword" "11223344"
+Output : 89605b015615ee59ea2547f49c46d7a30debc431b5badaa8fcd3fcc5d915eb1c
+
+=> Same password "mypassword" but different salt produces completely different hash.
+
+=== SUMMARY ===
+All programs compiled: OK
+Known answer vectors: PASS
+File integrity (before tamper): PASS
+File integrity (after tamper): FAIL (correctly detected)
+Password login (correct): PASS
+Password login (wrong): FAIL (correctly rejected)
+Salted hash (same password, different records): PASS (records differ)
+Salted login (correct): PASS
+Salted login (wrong): FAIL (correctly rejected)
